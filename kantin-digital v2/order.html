@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kantin Digital — Pilih Menu</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    🍽️ Kantin Digital <span class="dot"></span>
+  </div>
+  <div id="user-chip-top"></div>
+</div>
+
+<div class="page">
+
+  <!-- Banner -->
+  <div class="home-banner" style="margin-top:16px;">
+    <h2>Mau makan apa hari ini? 😋</h2>
+    <p>Pesan sekarang, antar langsung ke kelasmu</p>
+  </div>
+
+  <!-- Category Filter -->
+  <div class="chips" id="category-chips">
+    <div class="chip active" onclick="filterMenu('semua', this)">🍽️ Semua</div>
+    <div class="chip" onclick="filterMenu('Makanan', this)">🍱 Makanan</div>
+    <div class="chip" onclick="filterMenu('Minuman', this)">🥤 Minuman</div>
+    <div class="chip" onclick="filterMenu('Snack', this)">🧆 Snack</div>
+  </div>
+
+  <!-- Menu Grid -->
+  <div class="menu-grid" id="menu-grid">
+    <!-- Rendered by JS -->
+  </div>
+
+</div>
+
+<!-- Cart Bar (sticky bottom) -->
+<button class="cart-bar" id="cart-bar" style="display:none" onclick="openCheckout()">
+  <span class="cart-bar-count" id="cart-count">0</span>
+  <span class="cart-bar-text">Lihat Pesanan</span>
+  <span class="cart-bar-price" id="cart-total-bar">Rp 0</span>
+</button>
+
+<!-- CHECKOUT BOTTOM SHEET -->
+<div class="overlay" id="checkout-overlay" onclick="closeCheckoutOutside(event)">
+  <div class="bottom-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <h3 style="font-family:var(--font-display); font-size:1.1rem;">Ringkasan Pesanan</h3>
+      <button onclick="closeCheckout()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--text-muted);">✕</button>
+    </div>
+
+    <!-- Cart items -->
+    <div id="checkout-items"></div>
+
+    <!-- Eco Option -->
+    <div class="eco-toggle" id="eco-toggle" onclick="toggleEco()">
+      <span class="eco-icon">🌱</span>
+      <div class="eco-text">
+        <strong>Bawa tempat makan sendiri</strong>
+        <span>Hemat lingkungan, dapat diskon Rp 500!</span>
+      </div>
+      <div class="toggle-switch" id="eco-switch"><div class="toggle-knob"></div></div>
+    </div>
+
+    <!-- Price Summary -->
+    <div id="price-summary"></div>
+
+    <div style="height:8px;"></div>
+    <button class="btn btn-primary btn-full btn-lg" id="btn-checkout" onclick="doCheckout()">
+      Bayar Sekarang →
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config/firebase-config.js"></script>
+<script type="module">
+  import { MENU_ITEMS, createOrder } from './js/firebase.js';
+
+  // Auth check
+  const siswaRaw = sessionStorage.getItem('siswa');
+  if (!siswaRaw) { location.href = 'index.html'; }
+  const siswa = JSON.parse(siswaRaw);
+
+  // User chip
+  document.getElementById('user-chip-top').innerHTML = `
+    <div class="user-chip">
+      <div class="user-avatar">${siswa.nama[0].toUpperCase()}</div>
+      ${siswa.nama} · ${siswa.kelas}
+    </div>`;
+
+  // Cart state
+  let cart = {};
+  let ecoMode = false;
+  let activeCategory = 'semua';
+
+  // Render menu
+  function renderMenu(filter = 'semua') {
+    const grid = document.getElementById('menu-grid');
+    const items = filter === 'semua' ? MENU_ITEMS : MENU_ITEMS.filter(m => m.kategori === filter);
+    grid.innerHTML = items.map(item => `
+      <div class="menu-card ${cart[item.id]?.qty > 0 ? 'selected' : ''}" id="card-${item.id}" onclick="toggleCart('${item.id}')">
+        <div class="menu-check">✓</div>
+        <img src="${item.img}" alt="${item.nama}" loading="lazy"
+             onerror="this.src='https://via.placeholder.com/300x130/dcfce7/16a34a?text=${encodeURIComponent(item.emoji)}'"/>
+        <div class="menu-card-body">
+          <div class="menu-card-kategori">${item.kategori}</div>
+          <div class="menu-card-name">${item.nama}</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+            <span class="menu-card-price">${formatRp(item.harga)}</span>
+            ${cart[item.id]?.qty > 0 ? `
+              <div class="qty-control" onclick="event.stopPropagation()">
+                <button class="qty-btn" onclick="changeQty('${item.id}', -1)">−</button>
+                <span class="qty-value">${cart[item.id].qty}</span>
+                <button class="qty-btn" onclick="changeQty('${item.id}', 1)">+</button>
+              </div>` : `<span style="font-size:0.75rem; color:var(--text-light)">Tap untuk pilih</span>`}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleCart(id) {
+    const item = MENU_ITEMS.find(m => m.id === id);
+    if (!cart[id] || cart[id].qty === 0) {
+      cart[id] = { ...item, qty: 1 };
+    } else {
+      delete cart[id];
+    }
+    updateCartUI();
+    renderMenu(activeCategory);
+  }
+
+  function changeQty(id, delta) {
+    if (!cart[id]) return;
+    cart[id].qty += delta;
+    if (cart[id].qty <= 0) delete cart[id];
+    updateCartUI();
+    renderMenu(activeCategory);
+  }
+
+  function updateCartUI() {
+    const items = Object.values(cart);
+    const totalQty = items.reduce((s, i) => s + i.qty, 0);
+    const subtotal = items.reduce((s, i) => s + i.harga * i.qty, 0);
+    const discount = ecoMode ? 500 : 0;
+    const total = Math.max(0, subtotal - discount);
+
+    const bar = document.getElementById('cart-bar');
+    bar.style.display = totalQty > 0 ? 'flex' : 'none';
+    document.getElementById('cart-count').textContent = totalQty;
+    document.getElementById('cart-total-bar').textContent = formatRp(total);
+  }
+
+  window.filterMenu = function(cat, el) {
+    activeCategory = cat;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderMenu(cat);
+  };
+
+  window.toggleCart = toggleCart;
+  window.changeQty = changeQty;
+
+  window.openCheckout = function() {
+    const overlay = document.getElementById('checkout-overlay');
+    const items = Object.values(cart);
+    if (items.length === 0) return;
+
+    // Render items
+    document.getElementById('checkout-items').innerHTML = items.map(i => `
+      <div class="order-item">
+        <img class="order-item-img" src="${i.img}" alt="${i.nama}"
+             onerror="this.src='https://via.placeholder.com/56x56/dcfce7/16a34a?text=${encodeURIComponent(i.emoji)}'"/>
+        <div class="order-item-info">
+          <div class="order-item-name">${i.nama}</div>
+          <div class="order-item-price">${formatRp(i.harga)} × ${i.qty}</div>
+        </div>
+        <div style="font-weight:700; color:var(--green-main);">${formatRp(i.harga * i.qty)}</div>
+      </div>
+    `).join('');
+
+    renderPriceSummary();
+    overlay.classList.add('open');
+  };
+
+  function renderPriceSummary() {
+    const items = Object.values(cart);
+    const subtotal = items.reduce((s, i) => s + i.harga * i.qty, 0);
+    const discount = ecoMode ? 500 : 0;
+    const total = Math.max(0, subtotal - discount);
+    document.getElementById('price-summary').innerHTML = `
+      <div class="price-row"><span>Subtotal</span><span>${formatRp(subtotal)}</span></div>
+      ${ecoMode ? `<div class="price-row"><span>🌱 Diskon Eco</span><span style="color:var(--green-main);">−${formatRp(discount)}</span></div>` : ''}
+      <div class="price-row total"><span>Total Bayar</span><span class="price">${formatRp(total)}</span></div>
+    `;
+  }
+
+  window.toggleEco = function() {
+    ecoMode = !ecoMode;
+    document.getElementById('eco-switch').classList.toggle('on', ecoMode);
+    renderPriceSummary();
+    updateCartUI();
+  };
+
+  window.closeCheckout = function() {
+    document.getElementById('checkout-overlay').classList.remove('open');
+  };
+
+  window.closeCheckoutOutside = function(e) {
+    if (e.target === document.getElementById('checkout-overlay')) closeCheckout();
+  };
+
+  window.doCheckout = async function() {
+    const btn = document.getElementById('btn-checkout');
+    const items = Object.values(cart);
+    if (items.length === 0) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Membuat pesanan...';
+
+    try {
+      const subtotal = items.reduce((s, i) => s + i.harga * i.qty, 0);
+      const discount = ecoMode ? 500 : 0;
+      const total = Math.max(0, subtotal - discount);
+
+      const orderData = {
+        nama: siswa.nama,
+        kelas: siswa.kelas,
+        items: items.map(i => ({ id: i.id, nama: i.nama, harga: i.harga, qty: i.qty, emoji: i.emoji })),
+        subtotal,
+        discount,
+        total,
+        eco: ecoMode,
+        status: 'waiting_payment'
+      };
+
+      const orderId = await createOrder(orderData);
+      sessionStorage.setItem('currentOrder', orderId);
+      sessionStorage.setItem('currentOrderData', JSON.stringify(orderData));
+
+      showToast('Pesanan dibuat! Menuju pembayaran... 🎉', 'success');
+      setTimeout(() => location.href = 'payment.html', 800);
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal membuat pesanan. Coba lagi!', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Bayar Sekarang →';
+    }
+  };
+
+  function formatRp(num) {
+    return 'Rp ' + num.toLocaleString('id-ID');
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+
+  // Init
+  renderMenu();
+</script>
+
+</body>
+</html>
