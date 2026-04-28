@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kantin Digital — Dashboard Penjual</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .order-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .order-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .order-card-name {
+      font-weight: 700;
+      font-size: 1rem;
+      font-family: var(--font-display);
+    }
+    .order-card-id {
+      font-family: monospace;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .order-card-items {
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+    .order-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .order-card-total {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--green-main);
+      font-family: var(--font-display);
+    }
+    .tabs-scroll {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+      margin-bottom: 14px;
+    }
+    .tabs-scroll::-webkit-scrollbar { display: none; }
+    .tabs-scroll .tab-btn { flex-shrink: 0; }
+
+    @media (max-width: 480px) {
+      .stats-4 { grid-template-columns: repeat(2,1fr) !important; }
+    }
+  </style>
+</head>
+<body style="background:#f0f4f0;">
+
+<div class="admin-topbar">
+  <div class="admin-topbar-logo">
+    🍳 Dapur Dashboard
+    <span style="width:8px;height:8px;background:#4ade80;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite;margin-left:6px;"></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:0.76rem;opacity:0.8;" id="time-display"></span>
+    <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:none;color:white;padding:6px 12px;border-radius:8px;font-size:0.8rem;cursor:pointer;font-weight:600;">Keluar</button>
+  </div>
+</div>
+
+<div style="max-width:700px;margin:0 auto;padding:16px 14px 60px;">
+
+  <!-- Stats 4 kotak -->
+  <div class="stats-grid stats-4" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-total">0</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-pending" style="color:var(--amber);">0</div>
+      <div class="stat-label">Menunggu</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-process" style="color:var(--purple);">0</div>
+      <div class="stat-label">Diproses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-done" style="color:var(--green-main);">0</div>
+      <div class="stat-label">Selesai</div>
+    </div>
+  </div>
+
+  <!-- Omzet -->
+  <div style="background:linear-gradient(135deg,var(--green-dark),var(--green-main));color:white;border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:0.72rem;opacity:0.8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">💰 Omzet Hari Ini</div>
+      <div style="font-family:var(--font-display);font-size:1.9rem;font-weight:800;line-height:1;" id="stat-revenue">Rp 0</div>
+    </div>
+    <span style="font-size:2.5rem;opacity:0.5;">💵</span>
+  </div>
+
+  <!-- Tabs scroll -->
+  <div class="tabs-scroll">
+    <button class="tab-btn active" onclick="filterOrders('semua',this)">🍽️ Semua</button>
+    <button class="tab-btn" onclick="filterOrders('waiting_payment',this)">⏳ Menunggu</button>
+    <button class="tab-btn" onclick="filterOrders('paid',this)">✅ Sudah Bayar</button>
+    <button class="tab-btn" onclick="filterOrders('processing',this)">👨‍🍳 Diproses</button>
+    <button class="tab-btn" onclick="filterOrders('delivering',this)">🛵 Dikirim</button>
+    <button class="tab-btn" onclick="filterOrders('completed',this)">🎉 Selesai</button>
+  </div>
+
+  <!-- Order cards -->
+  <div id="orders-list">
+    <div style="text-align:center;padding:40px;color:var(--text-muted);">
+      <div class="loader"></div>
+      <p style="margin-top:10px;">Memuat pesanan...</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Detail Modal -->
+<div class="overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="bottom-sheet" style="max-width:500px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="font-family:var(--font-display);">Detail Pesanan</h3>
+      <button onclick="document.getElementById('detail-overlay').classList.remove('open')"
+        style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted);">✕</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script src="config/firebase-config.js"></script>
+<script type="module">
+  import { listenToAllOrders, updateOrderStatus, deleteOrder } from './js/firebase.js';
+
+  if (!sessionStorage.getItem('admin')) { location.href = 'index.html'; }
+
+  let allOrders = [];
+  let activeFilter = 'semua';
+
+  setInterval(() => {
+    document.getElementById('time-display').textContent =
+      new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }, 1000);
+
+  const fmt  = n => 'Rp ' + (n||0).toLocaleString('id-ID');
+  const fmtT = ts => {
+    if (!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  };
+
+  const BADGES = {
+    waiting_payment: ['badge-waiting',    '⏳ Menunggu'],
+    paid:            ['badge-paid',        '✅ Sudah Bayar'],
+    processing:      ['badge-processing',  '👨‍🍳 Diproses'],
+    delivering:      ['badge-delivering',  '🛵 Dikirim'],
+    completed:       ['badge-completed',   '🎉 Selesai'],
+  };
+
+  const ACTIONS = {
+    paid:       {label:'👨‍🍳 Proses', next:'processing', cls:'btn-primary'},
+    processing: {label:'🛵 Kirim',   next:'delivering', cls:'btn-amber'},
+    delivering: {label:'✅ Selesai', next:'completed',  cls:'btn-blue'},
+  };
+
+  function updateStats(orders) {
+    document.getElementById('stat-total').textContent   = orders.length;
+    document.getElementById('stat-pending').textContent = orders.filter(o=>['waiting_payment','paid'].includes(o.status)).length;
+    document.getElementById('stat-process').textContent = orders.filter(o=>['processing','delivering'].includes(o.status)).length;
+    document.getElementById('stat-done').textContent    = orders.filter(o=>o.status==='completed').length;
+    const rev = orders.filter(o=>o.status!=='waiting_payment').reduce((s,o)=>s+(o.total||0),0);
+    document.getElementById('stat-revenue').textContent = fmt(rev);
+  }
+
+  function renderOrders(filter) {
+    const el = document.getElementById('orders-list');
+    const list = filter === 'semua' ? allOrders : allOrders.filter(o=>o.status===filter);
+
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>Belum ada pesanan</h3><p>Pesanan baru muncul otomatis di sini</p></div>`;
+      return;
+    }
+
+    el.innerHTML = list.map(o => {
+      const [bc, bl] = BADGES[o.status] || ['','—'];
+      const act = ACTIONS[o.status];
+      const items = (o.items||[]).map(i=>`${i.emoji||'🍽️'} ${i.nama} ×${i.qty}`).join(' · ') || o.menu || '—';
+
+      return `
+      <div class="order-card">
+        <div class="order-card-top">
+          <div>
+            <div class="order-card-name">${o.nama}</div>
+            <div class="order-card-id">#${o.id.slice(-8).toUpperCase()} · ${fmtT(o.createdAt)}</div>
+          </div>
+          <span class="badge ${bc}" style="flex-shrink:0;white-space:nowrap;">${bl}</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:0.78rem;font-weight:700;">🏫 ${o.kelas}</span>
+          ${o.eco?`<span style="font-size:0.75rem;color:var(--green-main);font-weight:600;">🌱 Eco</span>`:''}
+        </div>
+
+        <div class="order-card-items">${items}</div>
+
+        <div class="order-card-footer">
+          <div class="order-card-total">${fmt(o.total)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${act?`<button class="btn ${act.cls} btn-sm" onclick="advance('${o.id}','${act.next}')">${act.label}</button>`:''}
+            <button class="btn btn-secondary btn-sm" onclick="detail('${o.id}')">Detail</button>
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;" onclick="confirmDelete('${o.id}','${o.nama}')">🗑️ Hapus</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.filterOrders = function(f, btn) {
+    activeFilter = f;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderOrders(f);
+  };
+
+  window.advance = async function(id, next) {
+    try { await updateOrderStatus(id, next); showToast('Status diperbarui! ✅','success'); }
+    catch(e) { showToast('Gagal update','error'); }
+  };
+
+  window.detail = function(id) {
+    const o = allOrders.find(x=>x.id===id); if(!o) return;
+    const [bc,bl] = BADGES[o.status]||['','—'];
+    const act = ACTIONS[o.status];
+    const items = (o.items||[]).map(i=>`<div class="price-row"><span>${i.emoji||'🍽️'} ${i.nama} ×${i.qty}</span><span>${fmt(i.harga*i.qty)}</span></div>`).join('');
+
+    document.getElementById('detail-content').innerHTML = `
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-family:monospace;font-size:0.82rem;color:var(--text-muted);">#${o.id.slice(-8).toUpperCase()}</span>
+          <span class="badge ${bc}">${bl}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:0.9rem;">
+          <span>👤 <strong>${o.nama}</strong></span>
+          <span>🏫 <strong>${o.kelas}</strong></span>
+          <span>🕐 <strong>${fmtT(o.createdAt)}</strong></span>
+        </div>
+        ${o.eco?`<div style="margin-top:8px;font-size:0.82rem;color:var(--green-main);">🌱 Tidak pakai plastik</div>`:''}
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;">
+        ${items}
+        ${o.discount>0?`<div class="price-row"><span>🌱 Diskon Eco</span><span style="color:var(--green-main);">−${fmt(o.discount)}</span></div>`:''}
+        <div class="price-row total"><span>Total Bayar</span><span class="price">${fmt(o.total)}</span></div>
+      </div>
+      ${act
+        ?`<button class="btn ${act.cls} btn-full btn-lg" onclick="advance('${o.id}','${act.next}');document.getElementById('detail-overlay').classList.remove('open')">${act.label} Sekarang</button>`
+        :`<div style="text-align:center;padding:14px;color:var(--green-main);font-weight:700;">🎉 Pesanan Selesai</div>`}
+    `;
+    document.getElementById('detail-overlay').classList.add('open');
+  };
+
+  window.closeDetail = e => {
+    if (e.target===document.getElementById('detail-overlay'))
+      document.getElementById('detail-overlay').classList.remove('open');
+  };
+
+  listenToAllOrders(orders => { allOrders=orders; updateStats(orders); renderOrders(activeFilter); });
+
+  window.confirmDelete = function(id, nama) {
+    if (confirm(`Hapus pesanan dari "${nama}"?\nData tidak bisa dikembalikan.`)) {
+      hapusOrder(id);
+    }
+  };
+
+  window.hapusOrder = async function(id) {
+    try {
+      await deleteOrder(id);
+      showToast('Pesanan berhasil dihapus 🗑️', 'success');
+    } catch(e) {
+      showToast('Gagal menghapus pesanan', 'error');
+    }
+  };
+
+  window.logout = () => { sessionStorage.removeItem('admin'); location.href='index.html'; };
+
+  function showToast(msg,type='') {
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className='toast show '+type;
+    setTimeout(()=>t.className='toast',2500);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kantin Digital — Status Pesanan</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button onclick="location.href='order.html'" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:8px;color:var(--text);">←</button>
+  <div class="topbar-logo">📍 Status Pesanan</div>
+  <div style="width:40px;"></div>
+</div>
+
+<div class="page desktop-tracking-layout">
+
+  <!-- Order ID card -->
+  <div style="margin-top:16px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">ID Pesanan</div>
+        <div style="font-family:var(--font-display); font-weight:700; font-size:0.95rem;" id="order-id-display">—</div>
+      </div>
+      <div id="status-badge-top"></div>
+    </div>
+    <div style="display:flex; gap:16px; margin-top:12px; font-size:0.85rem; color:var(--text-muted);">
+      <span>👤 <strong id="nama-display">—</strong></span>
+      <span>🏫 <strong id="kelas-display">—</strong></span>
+    </div>
+    <div style="margin-top:8px; font-size:0.85rem; color:var(--text-muted);" id="items-mini"></div>
+    <div style="margin-top:8px; font-weight:700; color:var(--green-main);" id="total-display"></div>
+  </div>
+
+  <!-- Status Timeline -->
+  <div class="section-header">
+    <div class="section-title">Progress Pesanan</div>
+  </div>
+
+  <div class="status-timeline" id="timeline">
+    <!-- Rendered by JS -->
+  </div>
+
+  <!-- Bottom Actions -->
+  <div style="margin-top:24px; display:flex; flex-direction:column; gap:10px;">
+    <button class="btn btn-outline btn-full" onclick="location.href='order.html'">
+      + Pesan Lagi
+    </button>
+    <button class="btn btn-secondary btn-full" id="btn-logout" onclick="logout()" style="font-size:0.85rem; color:var(--text-muted);">
+      Keluar
+    </button>
+  </div>
+
+  <div style="height:24px;"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config/firebase-config.js"></script>
+<script type="module">
+  import { listenToOrder } from './js/firebase.js';
+
+  const siswaRaw = sessionStorage.getItem('siswa');
+  const orderId = sessionStorage.getItem('currentOrder');
+  if (!siswaRaw || !orderId) { location.href = 'index.html'; }
+  const siswa = JSON.parse(siswaRaw);
+
+  function formatRp(n) { return 'Rp ' + n.toLocaleString('id-ID'); }
+
+  const STATUS_STEPS = [
+    {
+      key: 'waiting_payment',
+      icon: '💰',
+      title: 'Menunggu Pembayaran',
+      desc: 'Scan QRIS dan lakukan transfer'
+    },
+    {
+      key: 'paid',
+      icon: '✅',
+      title: 'Pembayaran Dikonfirmasi',
+      desc: 'Pembayaran diterima, menunggu penjual'
+    },
+    {
+      key: 'processing',
+      icon: '👨‍🍳',
+      title: 'Sedang Dimasak',
+      desc: 'Penjual sedang mempersiapkan pesananmu'
+    },
+    {
+      key: 'delivering',
+      icon: '🛵',
+      title: 'Dalam Pengiriman',
+      desc: `Pesanan sedang diantar ke kelas ${siswa.kelas}`
+    },
+    {
+      key: 'completed',
+      icon: '🎉',
+      title: 'Selesai!',
+      desc: 'Pesanan telah sampai. Selamat makan!'
+    }
+  ];
+
+  const STATUS_ORDER = STATUS_STEPS.map(s => s.key);
+
+  const BADGE_MAP = {
+    waiting_payment: ['badge-waiting', '⏳ Menunggu Bayar'],
+    paid: ['badge-paid', '✅ Sudah Bayar'],
+    processing: ['badge-processing', '👨‍🍳 Diproses'],
+    delivering: ['badge-delivering', '🛵 Dikirim'],
+    completed: ['badge-completed', '🎉 Selesai']
+  };
+
+  let prevStatus = null;
+
+  function renderTimeline(status) {
+    const currentIdx = STATUS_ORDER.indexOf(status);
+    document.getElementById('timeline').innerHTML = STATUS_STEPS.map((step, i) => {
+      const isDone = i < currentIdx;
+      const isActive = i === currentIdx;
+      return `
+        <div class="status-step">
+          <div class="step-icon ${isActive ? 'active' : isDone ? 'done' : ''}">
+            ${isDone ? '✓' : step.icon}
+          </div>
+          <div class="step-info" style="padding-top:8px;">
+            <div class="step-title" style="color:${isActive ? 'var(--green-main)' : isDone ? 'var(--text)' : 'var(--text-muted)'}; font-weight:${isActive ? '700' : '500'}">
+              ${step.title} ${isActive ? '<span class="notif-dot"></span>' : ''}
+            </div>
+            <div class="step-desc">${step.desc}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Listen real-time
+  const unsubscribe = listenToOrder(orderId, (order) => {
+    // Update order info
+    document.getElementById('order-id-display').textContent = '#' + orderId.slice(-8).toUpperCase();
+    document.getElementById('nama-display').textContent = order.nama;
+    document.getElementById('kelas-display').textContent = order.kelas;
+    document.getElementById('total-display').textContent = formatRp(order.total || 0);
+
+    if (order.items) {
+      document.getElementById('items-mini').textContent =
+        order.items.map(i => `${i.emoji} ${i.nama} ×${i.qty}`).join('  ·  ');
+    }
+
+    // Badge
+    const [cls, label] = BADGE_MAP[order.status] || ['badge-waiting', '—'];
+    document.getElementById('status-badge-top').innerHTML =
+      `<span class="badge ${cls}">${label}</span>`;
+
+    // Timeline
+    renderTimeline(order.status);
+
+    // Toast notification on status change
+    if (prevStatus && prevStatus !== order.status) {
+      const step = STATUS_STEPS.find(s => s.key === order.status);
+      if (step) showToast(step.icon + ' ' + step.title, 'success');
+    }
+    prevStatus = order.status;
+
+    // Confetti if completed
+    if (order.status === 'completed') {
+      launchConfetti();
+    }
+  });
+
+  window.logout = function() {
+    sessionStorage.clear();
+    location.href = 'index.html';
+  };
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  function launchConfetti() {
+    const colors = ['#16a34a', '#22c55e', '#4ade80', '#f59e0b', '#fbbf24'];
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        position:fixed; top:-10px; left:${Math.random()*100}vw;
+        width:8px; height:8px; border-radius:${Math.random() > 0.5 ? '50%' : '0'};
+        background:${colors[Math.floor(Math.random()*colors.length)]};
+        z-index:9999; pointer-events:none;
+        animation: confettiFall ${1.5 + Math.random()*2}s linear forwards;
+        animation-delay: ${Math.random()*0.5}s;
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+  }
+
+  // Add confetti CSS
+  const confettiStyle = document.createElement('style');
+  confettiStyle.textContent = `
+    @keyframes confettiFall {
+      to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(confettiStyle);
+</script>
+
+</body>
+</html>

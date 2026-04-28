@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kantin Digital — Pilih Menu</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    🍽️ Kantin Digital <span class="dot"></span>
+  </div>
+  <div id="user-chip-top" onclick="openProfile()" style="cursor:pointer;"></div>
+</div>
+
+<!-- DESKTOP LAYOUT WRAPPER -->
+<div class="desktop-order-layout">
+
+  <!-- KIRI: Banner + Filter + Menu -->
+  <div class="desktop-order-left">
+    <div class="page no-mobile-pad" style="padding-bottom:0;">
+
+      <!-- Banner -->
+      <div class="home-banner" style="margin-top:16px;">
+        <h2>Mau jajan apa hari ini bos? 😋</h2>
+        <p>Pesan sekarang, diantar langsung ke kelasmu</p>
+      </div>
+
+      <!-- Category Filter -->
+      <div class="chips chips-row" id="category-chips">
+        <div class="chip active" onclick="filterMenu('semua', this)">🍽️ Semua</div>
+        <div class="chip" onclick="filterMenu('Makanan', this)">🍱 Makanan</div>
+        <div class="chip" onclick="filterMenu('Minuman', this)">🥤 Minuman</div>
+        <div class="chip" onclick="filterMenu('Snack', this)">🧆 Snack</div>
+      </div>
+
+      <!-- Menu Grid -->
+      <div class="menu-grid" id="menu-grid">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div style="height:32px;"></div>
+    </div>
+  </div>
+
+  <!-- KANAN: Cart Panel (hanya muncul di desktop) -->
+  <div class="desktop-cart-panel" id="desktop-cart-panel">
+    <div class="cart-panel-title">🛒 Keranjang Belanja</div>
+    <div id="desktop-cart-items">
+      <div class="desktop-cart-empty">
+        <div style="font-size:2rem; margin-bottom:8px;">🛒</div>
+        <div>Belum ada item dipilih</div>
+      </div>
+    </div>
+    <div id="desktop-cart-total" style="display:none; padding-top:12px; border-top:1.5px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; font-weight:700; font-size:1rem; margin-bottom:12px;">
+        <span>Total</span>
+        <span id="desktop-total-label" style="color:var(--green-main);">Rp 0</span>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="openCheckout()" style="width:100%;">
+        Bayar Sekarang →
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Cart Bar (sticky bottom, mobile only) -->
+<button class="cart-bar" id="cart-bar" style="display:none" onclick="openCheckout()">
+  <span class="cart-bar-count" id="cart-count">0</span>
+  <span class="cart-bar-text">Lihat Pesanan</span>
+  <span class="cart-bar-price" id="cart-total-bar">Rp 0</span>
+</button>
+
+<!-- CHECKOUT BOTTOM SHEET -->
+<div class="overlay" id="checkout-overlay" onclick="closeCheckoutOutside(event)">
+  <div class="bottom-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <h3 style="font-family:var(--font-display); font-size:1.1rem;">Ringkasan Pesanan</h3>
+      <button onclick="closeCheckout()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--text-muted);">✕</button>
+    </div>
+
+    <!-- Cart items -->
+    <div id="checkout-items"></div>
+
+    <!-- Eco Option -->
+    <div class="eco-toggle" id="eco-toggle" onclick="toggleEco()">
+      <span class="eco-icon">🌱</span>
+      <div class="eco-text">
+        <strong>Tidak pakai plastik</strong>
+        <span>Hemat lingkungan, dapat diskon Rp 500!</span>
+      </div>
+      <div class="toggle-switch" id="eco-switch"><div class="toggle-knob"></div></div>
+    </div>
+
+    <!-- Price Summary -->
+    <div id="price-summary"></div>
+
+    <div style="height:8px;"></div>
+    <button class="btn btn-primary btn-full btn-lg" id="btn-checkout" onclick="doCheckout()">
+      Bayar Sekarang →
+    </button>
+  </div>
+</div>
+
+<!-- PROFILE BOTTOM SHEET -->
+<div class="overlay" id="profile-overlay" onclick="closeProfileOutside(event)">
+  <div class="bottom-sheet" id="profile-sheet">
+    <!-- Header profil -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <h3 style="font-family:var(--font-display); font-size:1.1rem;">👤 Profil Saya</h3>
+      <button onclick="closeProfile()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--text-muted);">✕</button>
+    </div>
+
+    <!-- Avatar + Info -->
+    <div style="display:flex; align-items:center; gap:16px; background:var(--green-pale); border:1.5px solid rgba(22,163,74,0.2); border-radius:var(--radius); padding:16px; margin-bottom:16px;">
+      <div id="profile-avatar" style="width:56px; height:56px; background:var(--green-main); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-size:1.5rem; font-weight:700; flex-shrink:0;"></div>
+      <div>
+        <div id="profile-nama" style="font-family:var(--font-display); font-weight:700; font-size:1rem; color:var(--text);"></div>
+        <div id="profile-kelas" style="font-size:0.82rem; color:var(--green-dark); font-weight:600; margin-top:2px;"></div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">🟢 Siswa Aktif</div>
+      </div>
+    </div>
+
+    <!-- Stats Pesanan -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;" id="profile-stats">
+      <div style="background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:12px; text-align:center;">
+        <div style="font-size:1.4rem; font-weight:800; color:var(--green-main);" id="stat-order-count">0</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Total Pesanan</div>
+      </div>
+      <div style="background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:12px; text-align:center;">
+        <div style="font-size:1.4rem; font-weight:800; color:var(--green-main);" id="stat-eco-count">0</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Eco Mode 🌱</div>
+      </div>
+    </div>
+
+    <!-- Menu Items -->
+    <div style="display:flex; flex-direction:column; gap:8px;">
+
+      <!-- Riwayat Pesanan -->
+      <button onclick="goToTracking()" style="display:flex; align-items:center; gap:12px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:14px 16px; cursor:pointer; width:100%; text-align:left;">
+        <span style="font-size:1.2rem;">📦</span>
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:0.9rem; color:var(--text);">Pesanan Terakhir</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);" id="last-order-label">Belum ada pesanan</div>
+        </div>
+        <span style="color:var(--text-muted); font-size:0.9rem;">›</span>
+      </button>
+
+      <!-- Eco Badge -->
+      <div id="eco-badge-row" style="display:flex; align-items:center; gap:12px; background:#f0fdf4; border:1.5px solid rgba(22,163,74,0.25); border-radius:var(--radius-sm); padding:14px 16px;">
+        <span style="font-size:1.2rem;">🌱</span>
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:0.9rem; color:var(--green-dark);">Eco Warrior</div>
+          <div style="font-size:0.75rem; color:var(--green-main);" id="eco-badge-text">Aktifkan eco mode saat checkout!</div>
+        </div>
+      </div>
+
+      <!-- Logout -->
+      <button onclick="doLogout()" style="display:flex; align-items:center; gap:12px; background:#fff5f5; border:1.5px solid rgba(239,68,68,0.2); border-radius:var(--radius-sm); padding:14px 16px; cursor:pointer; width:100%; text-align:left; margin-top:4px;">
+        <span style="font-size:1.2rem;">🚪</span>
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:0.9rem; color:#dc2626;">Keluar</div>
+          <div style="font-size:0.75rem; color:#ef4444;">Kembali ke halaman login</div>
+        </div>
+        <span style="color:#ef4444; font-size:0.9rem;">›</span>
+      </button>
+    </div>
+
+    <div style="height:8px;"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config/firebase-config.js"></script>
+<script type="module">
+  import { MENU_ITEMS, createOrder } from './js/firebase.js';
+
+  // Auth check
+  const siswaRaw = sessionStorage.getItem('siswa');
+  if (!siswaRaw) { location.href = 'index.html'; }
+  const siswa = JSON.parse(siswaRaw);
+
+  // User chip
+  document.getElementById('user-chip-top').innerHTML = `
+    <div class="user-chip">
+      <div class="user-avatar">${siswa.nama[0].toUpperCase()}</div>
+      ${siswa.nama} · ${siswa.kelas}
+    </div>`;
+
+  // Cart state
+  let cart = {};
+  let ecoMode = false;
+  let activeCategory = 'semua';
+
+  // Render menu
+  function renderMenu(filter = 'semua') {
+    const grid = document.getElementById('menu-grid');
+    const items = filter === 'semua' ? MENU_ITEMS : MENU_ITEMS.filter(m => m.kategori === filter);
+    grid.innerHTML = items.map(item => `
+      <div class="menu-card ${cart[item.id]?.qty > 0 ? 'selected' : ''}" id="card-${item.id}" onclick="toggleCart('${item.id}')">
+        <div class="menu-check">✓</div>
+        <img src="${item.img}" alt="${item.nama}" loading="lazy"
+             onerror="this.src='https://via.placeholder.com/300x130/dcfce7/16a34a?text=${encodeURIComponent(item.emoji)}'"/>
+        <div class="menu-card-body">
+          <div class="menu-card-kategori">${item.kategori}</div>
+          <div class="menu-card-name">${item.nama}</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+            <span class="menu-card-price">${formatRp(item.harga)}</span>
+            ${cart[item.id]?.qty > 0 ? `
+              <div class="qty-control" onclick="event.stopPropagation()">
+                <button class="qty-btn" onclick="changeQty('${item.id}', -1)">−</button>
+                <span class="qty-value">${cart[item.id].qty}</span>
+                <button class="qty-btn" onclick="changeQty('${item.id}', 1)">+</button>
+              </div>` : `<span style="font-size:0.75rem; color:var(--text-light)">Tap untuk pilih</span>`}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleCart(id) {
+    const item = MENU_ITEMS.find(m => m.id === id);
+    if (!cart[id] || cart[id].qty === 0) {
+      cart[id] = { ...item, qty: 1 };
+    } else {
+      delete cart[id];
+    }
+    updateCartUI();
+    renderMenu(activeCategory);
+  }
+
+  function changeQty(id, delta) {
+    if (!cart[id]) return;
+    cart[id].qty += delta;
+    if (cart[id].qty <= 0) delete cart[id];
+    updateCartUI();
+    renderMenu(activeCategory);
+  }
+
+  function updateCartUI() {
+    const items = Object.values(cart);
+    const totalQty = items.reduce((s, i) => s + i.qty, 0);
+    const subtotal = items.reduce((s, i) => s + i.harga * i.qty, 0);
+    const discount = ecoMode ? 500 : 0;
+    const total = Math.max(0, subtotal - discount);
+
+    const bar = document.getElementById('cart-bar');
+    bar.style.display = totalQty > 0 ? 'flex' : 'none';
+    document.getElementById('cart-count').textContent = totalQty;
+    document.getElementById('cart-total-bar').textContent = formatRp(total);
+
+    // Sync ke desktop cart panel
+    updateDesktopCart();
+  }
+
+  window.filterMenu = function(cat, el) {
+    activeCategory = cat;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderMenu(cat);
+  };
+
+  window.toggleCart = toggleCart;
+  window.changeQty = changeQty;
+
+  window.openCheckout = function() {
+    const overlay = document.getElementById('checkout-overlay');
+    const items = Object.values(cart);
+    if (items.length === 0) return;
+
+    // Render items
+    document.getElementById('checkout-items').innerHTML = items.map(i => `
+      <div class="order-item">
+        <img class="order-item-img" src="${i.img}" alt="${i.nama}"
+             onerror="this.src='https://via.placeholder.com/56x56/dcfce7/16a34a?text=${encodeURIComponent(i.emoji)}'"/>
+        <div class="order-item-info">
+          <div class="order-item-name">${i.nama}</div>
+          <div class="order-item-price">${formatRp(i.harga)} × ${i.qty}</div>
+        </div>
+        <div style="font-weight:700; color:var(--green-main);">${formatRp(i.harga * i.qty)}</div>
+      </div>
+    `).join('');
+
+    renderPriceSummary();
+    overlay.classList.add('open');
+  };
+
+  function renderPriceSummary() {
+    const items = Object.values(cart);
+    const subtotal = items.reduce((s, i) => s + i.harga * i.qty, 0);
+    const discount = ecoMode ? 500 : 0;
+    const total = Math.max(0, subtotal - discount);
+    document.getElementById('price-summary').innerHTML = `
+      <div class="price-row"><span>Subtotal</span><span>${formatRp(subtotal)}</span></div>
+      ${ecoMode ? `<div class="price-row"><span>🌱 Diskon Eco</span><span style="color:var(--green-main);">−${formatRp(discount)}</span></div>` : ''}
+      <div class="price-row total"><span>Total Bayar</span><span class="price">${formatRp(total)}</span></div>
+    `;
+  }
+
+  window.toggleEco = function() {
+    ecoMode = !ecoMode;
+    document.getElementById('eco-switch').classList.toggle('on', ecoMode);
+    renderPriceSummary();
+    updateCartUI();
+  };
+
+  window.closeCheckout = function() {
+    document.getElementById('checkout-overlay').classList.remove('open');
+  };
+
+  window.closeCheckoutOutside = function(e) {
+    if (e.target === document.getElementById('checkout-overlay')) closeCheckout();
+  };
+
+  window.doCheckout = async function() {
+    const btn = document.getElementById('btn-checkout');
+    const items = Object.values(cart);
+    if (items.length === 0) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Membuat pesanan...';
+
+    try {
+      const subtotal = items.reduce((s, i) => s + i.harga * i.qty, 0);
+      const discount = ecoMode ? 500 : 0;
+      const total = Math.max(0, subtotal - discount);
+
+      const orderData = {
+        nama: siswa.nama,
+        kelas: siswa.kelas,
+        items: items.map(i => ({ id: i.id, nama: i.nama, harga: i.harga, qty: i.qty, emoji: i.emoji })),
+        subtotal,
+        discount,
+        total,
+        eco: ecoMode,
+        status: 'waiting_payment'
+      };
+
+      const orderId = await createOrder(orderData);
+      sessionStorage.setItem('currentOrder', orderId);
+      sessionStorage.setItem('currentOrderData', JSON.stringify(orderData));
+
+      // Update counters
+      const prevCount = parseInt(sessionStorage.getItem('orderCount') || '0');
+      sessionStorage.setItem('orderCount', prevCount + 1);
+      if (ecoMode) {
+        const prevEco = parseInt(sessionStorage.getItem('ecoCount') || '0');
+        sessionStorage.setItem('ecoCount', prevEco + 1);
+      }
+
+      showToast('Pesanan dibuat! Menuju pembayaran... 🎉', 'success');
+      setTimeout(() => location.href = 'payment.html', 800);
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal membuat pesanan. Coba lagi!', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Bayar Sekarang →';
+    }
+  };
+
+  function formatRp(num) {
+    return 'Rp ' + num.toLocaleString('id-ID');
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+
+
+  // ─── DESKTOP CART PANEL SYNC ─────────────────────────────────────────────────
+  function updateDesktopCart() {
+    const panel = document.getElementById('desktop-cart-panel');
+    if (!panel) return;
+    const itemsEl = document.getElementById('desktop-cart-items');
+    const totalEl = document.getElementById('desktop-cart-total');
+    const totalLabel = document.getElementById('desktop-total-label');
+
+    const cartItems = Object.values(cart);
+    if (cartItems.length === 0) {
+      itemsEl.innerHTML = `<div class="desktop-cart-empty"><div style="font-size:2rem;margin-bottom:8px;">🛒</div><div>Belum ada item dipilih</div></div>`;
+      totalEl.style.display = 'none';
+    } else {
+      itemsEl.innerHTML = cartItems.map(i => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); gap:8px;">
+          <div>
+            <div style="font-size:0.88rem; font-weight:600;">${i.emoji} ${i.nama}</div>
+            <div style="font-size:0.78rem; color:var(--text-muted);">×${i.qty} · ${formatRp(i.harga * i.qty)}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button onclick="changeQty('${i.id}', -1)" style="width:24px;height:24px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+            <span style="font-size:0.85rem;font-weight:700;min-width:16px;text-align:center;">${i.qty}</span>
+            <button onclick="changeQty('${i.id}', 1)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--green-main);color:white;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+          </div>
+        </div>`).join('');
+      const total = cartItems.reduce((s, i) => s + i.harga * i.qty, 0);
+      totalLabel.textContent = formatRp(total);
+      totalEl.style.display = 'block';
+    }
+  }
+
+
+  // ──────────────────────────────────────────────────────────────────────────────
+
+  // ─── PROFILE FUNCTIONS ────────────────────────────────────────────────────────
+  window.openProfile = function() {
+    // Isi data profil
+    document.getElementById('profile-avatar').textContent = siswa.nama[0].toUpperCase();
+    document.getElementById('profile-nama').textContent = siswa.nama;
+    document.getElementById('profile-kelas').textContent = '🏫 Kelas ' + siswa.kelas;
+
+    // Hitung stats dari sessionStorage
+    const orderCount = parseInt(sessionStorage.getItem('orderCount') || '0');
+    const ecoCount   = parseInt(sessionStorage.getItem('ecoCount') || '0');
+    document.getElementById('stat-order-count').textContent = orderCount;
+    document.getElementById('stat-eco-count').textContent = ecoCount;
+
+    // Label pesanan terakhir
+    const lastOrderId = sessionStorage.getItem('currentOrder');
+    const lastOrderData = sessionStorage.getItem('currentOrderData');
+    if (lastOrderId && lastOrderData) {
+      const od = JSON.parse(lastOrderData);
+      const itemNames = od.items.map(i => i.emoji + ' ' + i.nama).join(', ');
+      document.getElementById('last-order-label').textContent = itemNames.length > 40 ? itemNames.slice(0, 40) + '…' : itemNames;
+    } else {
+      document.getElementById('last-order-label').textContent = 'Belum ada pesanan';
+    }
+
+    // Eco badge text
+    if (ecoCount >= 5) {
+      document.getElementById('eco-badge-text').textContent = '🏆 Super Eco Warrior! ' + ecoCount + '× pakai eco mode';
+    } else if (ecoCount > 0) {
+      document.getElementById('eco-badge-text').textContent = ecoCount + '× sudah pakai eco mode, terus semangat!';
+    } else {
+      document.getElementById('eco-badge-text').textContent = 'Aktifkan eco mode saat checkout untuk diskon Rp 500!';
+    }
+
+    document.getElementById('profile-overlay').classList.add('open');
+  };
+
+  window.closeProfile = function() {
+    document.getElementById('profile-overlay').classList.remove('open');
+  };
+
+  window.closeProfileOutside = function(e) {
+    if (e.target === document.getElementById('profile-overlay')) closeProfile();
+  };
+
+  window.goToTracking = function() {
+    const lastOrderId = sessionStorage.getItem('currentOrder');
+    if (lastOrderId) {
+      location.href = 'tracking.html';
+    } else {
+      showToast('Belum ada pesanan aktif! 📦', 'error');
+    }
+  };
+
+  window.doLogout = function() {
+    sessionStorage.removeItem('siswa');
+    sessionStorage.removeItem('currentOrder');
+    sessionStorage.removeItem('currentOrderData');
+    showToast('Sampai jumpa! 👋', 'success');
+    setTimeout(() => location.href = 'index.html', 800);
+  };
+
+  // Tambah counter order & eco setiap kali checkout berhasil
+  const _origDoCheckout = window.doCheckout;
+  const _origToggleEco = window.toggleEco;
+
+  // Init
+  renderMenu();
+</script>
+
+</body>
+</html>

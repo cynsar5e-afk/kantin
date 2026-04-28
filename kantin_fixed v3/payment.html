@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kantin Digital — Pembayaran QRIS</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button onclick="location.href='order.html'" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:8px;color:var(--text);">←</button>
+  <div class="topbar-logo">💳 Pembayaran</div>
+  <div style="width:40px;"></div>
+</div>
+
+<div class="page desktop-payment-layout">
+
+  <!-- KIRI: Summary + Total -->
+  <div class="desktop-payment-left">
+
+  <!-- Order Summary Header -->
+  <div style="background:var(--green-pale); border:1.5px solid rgba(22,163,74,0.25); border-radius:var(--radius); padding:16px; margin-top:16px; margin-bottom:20px;">
+    <div style="font-size:0.78rem; color:var(--green-dark); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Ringkasan Pesanan</div>
+    <div id="order-summary-items" style="display:flex;flex-direction:column;gap:4px;"></div>
+    <div id="order-delivery-info" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(22,163,74,0.2); font-size:0.85rem; color:var(--green-dark);">
+      📍 Diantar ke: <strong id="kelas-label">—</strong>
+    </div>
+  </div>
+
+  <!-- Total -->
+  <div class="total-display">
+    <div class="label">Total yang harus dibayar</div>
+    <div class="amount" id="total-amount">Rp 0</div>
+    <div style="font-size:0.78rem; color:var(--green-dark); margin-top:6px;">Bayar pas ya, biar mudah!</div>
+  </div>
+
+  </div><!-- end desktop-payment-left -->
+
+  <!-- KANAN: QRIS + Timer + Button -->
+  <div class="desktop-payment-right">
+
+  <!-- QRIS Section -->
+  <div class="qris-container">
+    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:4px;">
+      <span style="font-size:0.85rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Scan QRIS untuk bayar</span>
+    </div>
+
+    <div style="font-size:0.78rem; color:var(--green-main); font-weight:600; margin-bottom:12px;">
+      ✅ Nominal sudah otomatis sesuai harga
+    </div>
+
+    <!-- QR Canvas — di-generate JS, bukan dari file gambar -->
+    <div id="qris-canvas-wrap" style="display:inline-block; border:3px solid var(--green-pale); border-radius:16px; padding:10px; background:white;">
+      <canvas id="qris-canvas"></canvas>
+    </div>
+
+    <!-- Tombol Download QRIS -->
+    <button id="btn-download-qris" onclick="downloadQRIS()" style="margin-top:14px; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--green-pale); border:1.5px solid rgba(22,163,74,0.3); border-radius:var(--radius-sm); padding:10px 20px; cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--green-dark); width:100%;">
+      📥 Simpan QR ke Galeri
+    </button>
+
+    <div style="margin-top:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/QRIS_logo.svg/200px-QRIS_logo.svg.png"
+           onerror="this.style.display='none'" alt="QRIS" style="height:20px; object-fit:contain;" />
+      <span style="font-size:0.78rem; color:var(--text-muted);">Semua aplikasi dompet digital</span>
+    </div>
+
+    <div style="margin-top:12px; background:var(--amber-pale); border:1.5px solid #fcd34d; border-radius:10px; padding:10px 14px; text-align:left; font-size:0.82rem; color:#78350f;">
+      <strong>⚡ Cara bayar:</strong><br>
+      1. Buka aplikasi e-wallet / m-banking<br>
+      2. Pilih menu QRIS / Scan QR<br>
+      3. Scan kode di atas<br>
+      4. Nominal <strong id="nominal-hint">Rp 0</strong> sudah terisi otomatis!<br>
+      5. Konfirmasi pembayaran
+    </div>
+  </div>
+
+  <!-- Timer -->
+  <div id="timer-bar" style="text-align:center; padding:12px; background:var(--surface2); border-radius:var(--radius-sm); margin-bottom:16px;">
+    <span style="font-size:0.82rem; color:var(--text-muted);">⏱️ Batas pembayaran: </span>
+    <span id="timer-text" style="font-weight:700; color:var(--amber);">14:59</span>
+  </div>
+
+  <!-- Confirm Button -->
+  <button class="btn btn-primary btn-full btn-lg" id="btn-confirm" onclick="confirmPayment()">
+    ✅ Saya Sudah Bayar
+  </button>
+
+  <p style="text-align:center; font-size:0.78rem; color:var(--text-light); margin-top:12px;">
+    Klik setelah transfer berhasil.<br>Admin akan memproses pesananmu.
+  </p>
+
+  <div style="height:24px;"></div>
+
+</div>
+
+  </div><!-- end desktop-payment-right -->
+
+<div class="toast" id="toast"></div>
+
+<!-- Confirm Modal -->
+<div class="overlay" id="confirm-overlay">
+  <div class="bottom-sheet" style="text-align:center; padding:32px 24px;">
+    <div style="font-size:3rem; margin-bottom:12px;">✅</div>
+    <h3 style="font-size:1.2rem; margin-bottom:8px;">Pembayaran Dikonfirmasi!</h3>
+    <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:24px;">
+      Pesananmu sedang diproses penjual.<br>Pantau statusnya di halaman tracking.
+    </p>
+    <button class="btn btn-primary btn-full btn-lg" onclick="goTracking()">
+      📍 Pantau Status Pesanan →
+    </button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="config/firebase-config.js"></script>
+<script type="module">
+  import { updateOrderStatus, getOrder } from './js/firebase.js';
+
+  // Auth check
+  const siswaRaw = sessionStorage.getItem('siswa');
+  const orderId = sessionStorage.getItem('currentOrder');
+  const orderDataRaw = sessionStorage.getItem('currentOrderData');
+
+  if (!siswaRaw || !orderId) { location.href = 'index.html'; }
+
+  const siswa = JSON.parse(siswaRaw);
+  const orderData = orderDataRaw ? JSON.parse(orderDataRaw) : null;
+
+  function formatRp(n) { return 'Rp ' + n.toLocaleString('id-ID'); }
+
+  // ─── QRIS DINAMIS ────────────────────────────────────────────────
+  const QRIS_STATIC = "00020101021126570011ID.DANA.WWW011893600915380667299602098066729960303UMI51440014ID.CO.QRIS.WWW0215ID10243664141410303UMI5204573253033605802ID5915Revelmarin shop6015Kab. Pandeglang6105422756304737E";
+
+  function crc16(str) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < str.length; i++) {
+      crc ^= str.charCodeAt(i) << 8;
+      for (let j = 0; j < 8; j++) {
+        crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+      }
+    }
+    return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  function generateDynamicQRIS(amount) {
+    // Ubah flag statis (0211) → dinamis (0212)
+    let qris = QRIS_STATIC.replace("010211", "010212");
+
+    // Hapus CRC lama (4 karakter terakhir)
+    let qrisNoCRC = qris.slice(0, -4);
+
+    // Buat field nominal (tag 54)
+    const amountStr = amount.toString();
+    const amountField = "54" + amountStr.length.toString().padStart(2, '0') + amountStr;
+
+    // Sisipkan field nominal sebelum "5802ID"
+    qrisNoCRC = qrisNoCRC.replace("5802ID", amountField + "5802ID");
+
+    // Hitung CRC baru dan gabungkan
+    return qrisNoCRC + crc16(qrisNoCRC);
+  }
+
+  function renderQRIS(amount) {
+    const qrisString = generateDynamicQRIS(amount);
+    const wrap = document.getElementById('qris-canvas-wrap');
+    wrap.innerHTML = ''; // clear previous
+    new QRCode(wrap, {
+      text: qrisString,
+      width: 220,
+      height: 220,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────
+
+  // Render order summary
+  if (orderData) {
+    const totalFmt = formatRp(orderData.total);
+    document.getElementById('total-amount').textContent = totalFmt;
+    document.getElementById('nominal-hint').textContent = totalFmt;
+    document.getElementById('kelas-label').textContent = orderData.kelas;
+
+    document.getElementById('order-summary-items').innerHTML = orderData.items.map(i =>
+      `<div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+        <span>${i.emoji} ${i.nama} ×${i.qty}</span>
+        <span style="font-weight:600;">${formatRp(i.harga * i.qty)}</span>
+      </div>`
+    ).join('') + (orderData.eco ? `<div style="font-size:0.8rem;color:var(--green-main);margin-top:4px;">🌱 Eco mode: −${formatRp(500)}</div>` : '');
+
+    // Generate QRIS dinamis sesuai total order
+    renderQRIS(orderData.total);
+  }
+
+  // Timer countdown (15 minutes)
+  let timeLeft = 15 * 60;
+  const timerEl = document.getElementById('timer-text');
+
+  const timerInterval = setInterval(() => {
+    timeLeft--;
+    const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+    const s = String(timeLeft % 60).padStart(2, '0');
+    timerEl.textContent = `${m}:${s}`;
+    if (timeLeft <= 60) timerEl.style.color = 'var(--red)';
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timerEl.textContent = 'HABIS';
+      document.getElementById('btn-confirm').disabled = true;
+    }
+  }, 1000);
+
+  // Confirm payment
+  window.confirmPayment = async function() {
+    const btn = document.getElementById('btn-confirm');
+    btn.disabled = true;
+    btn.textContent = 'Mengkonfirmasi...';
+    try {
+      await updateOrderStatus(orderId, 'paid');
+      clearInterval(timerInterval);
+      document.getElementById('confirm-overlay').classList.add('open');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal konfirmasi, coba lagi!', 'error');
+      btn.disabled = false;
+      btn.textContent = '✅ Saya Sudah Bayar';
+    }
+  };
+
+  window.goTracking = function() {
+    location.href = 'tracking.html';
+  };
+
+  // ─── DOWNLOAD QRIS ───────────────────────────────────────────────
+  window.downloadQRIS = function() {
+    // Cari canvas atau img yang digenerate QRCode.js
+    const wrap = document.getElementById('qris-canvas-wrap');
+    const canvas = wrap.querySelector('canvas');
+    const img    = wrap.querySelector('img');
+
+    let dataUrl = null;
+
+    if (canvas) {
+      dataUrl = canvas.toDataURL('image/png');
+    } else if (img) {
+      // QRCode.js kadang render sebagai <img> di beberapa browser
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width  = img.naturalWidth  || 220;
+      tempCanvas.height = img.naturalHeight || 220;
+      tempCanvas.getContext('2d').drawImage(img, 0, 0);
+      dataUrl = tempCanvas.toDataURL('image/png');
+    }
+
+    if (!dataUrl) {
+      showToast('QR belum siap, coba sebentar lagi!', 'error');
+      return;
+    }
+
+    // Nama file pakai nama siswa + total
+    const nama  = siswa ? siswa.nama.replace(/\s+/g, '_') : 'siswa';
+    const total = orderData ? orderData.total : 0;
+    const fileName = `QRIS_KantinDigital_${nama}_${total}.png`;
+
+    const a = document.createElement('a');
+    a.href     = dataUrl;
+    a.download = fileName;
+    a.click();
+
+    showToast('QR berhasil disimpan! 📥', 'success');
+  };
+  // ─────────────────────────────────────────────────────────────────
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+</script>
+
+</body>
+</html>

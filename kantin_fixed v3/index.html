@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kantin Digital — Login</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="login-hero">
+  <div class="login-card">
+
+    <div class="login-logo">
+      <div class="icon-wrap">🍽️</div>
+      <h1>Kantin Digital</h1>
+      <p>Pesan online, dikirim ke kelas</p>
+    </div>
+
+    <!-- Role Tabs -->
+    <div class="role-tabs">
+      <button class="role-tab active" id="tab-siswa" onclick="switchRole('siswa')">
+        👨‍🎓 Siswa
+      </button>
+      <button class="role-tab" id="tab-penjual" onclick="switchRole('penjual')">
+        👨‍🍳 Penjual
+      </button>
+    </div>
+
+    <!-- FORM SISWA -->
+    <div id="form-siswa">
+      <div class="form-group">
+        <label class="form-label">Nama Lengkap</label>
+        <input type="text" class="form-input" id="siswa-nama" placeholder="Contoh: Ahmad mahesa" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kelas</label>
+        <select class="form-select" id="siswa-kelas">
+          <option value="">— Pilih Kelas —</option>
+          <option>X 1</option><option>X 2</option>
+          <option>X 3</option><option>X 4</option>
+          <option>X 5</option><option>X 6</option>
+          <option>X 7</option><option>X 8</option>
+          <option>XI 1</option><option>XI 2</option>
+          <option>XI 3</option><option>XI 4</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full btn-lg" onclick="loginSiswa()">
+        Masuk & Pesan Sekarang →
+      </button>
+    </div>
+
+    <!-- FORM PENJUAL -->
+    <div id="form-penjual" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" class="form-input" id="admin-user" placeholder="admin" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="admin-pass" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary btn-full btn-lg" onclick="loginAdmin()" style="background: var(--green-dark);">
+        Masuk sebagai Penjual →
+      </button>
+    </div>
+
+    <p style="text-align:center; margin-top:20px; font-size:0.78rem; color:var(--text-light);">
+      v1.0 · Revelmarin Project © 2026
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config/firebase-config.js"></script>
+<script type="module">
+  import { ADMIN_CREDENTIALS } from './js/firebase.js';
+  window.ADMIN_CRED = ADMIN_CREDENTIALS;
+</script>
+<script>
+  // Cek jika sudah login
+  const siswa = sessionStorage.getItem('siswa');
+  const admin = sessionStorage.getItem('admin');
+  if (siswa) location.href = 'order.html';
+  if (admin) location.href = 'admin.html';
+
+  function switchRole(role) {
+    document.getElementById('form-siswa').style.display = role === 'siswa' ? 'block' : 'none';
+    document.getElementById('form-penjual').style.display = role === 'penjual' ? 'block' : 'none';
+    document.getElementById('tab-siswa').classList.toggle('active', role === 'siswa');
+    document.getElementById('tab-penjual').classList.toggle('active', role === 'penjual');
+  }
+
+  function loginSiswa() {
+    const nama = document.getElementById('siswa-nama').value.trim();
+    const kelas = document.getElementById('siswa-kelas').value;
+    if (!nama) return showToast('Masukin nama lu dulu! 👤', 'error');
+    if (!kelas) return showToast('Pilih kelas lu dulu! 🏫', 'error');
+    sessionStorage.setItem('siswa', JSON.stringify({ nama, kelas }));
+    showToast('Halo, ' + nama + '! 👋', 'success');
+    setTimeout(() => location.href = 'order.html', 800);
+  }
+
+  function loginAdmin() {
+    const user = document.getElementById('admin-user').value.trim();
+    const pass = document.getElementById('admin-pass').value;
+    const cred = window.ADMIN_CRED || { username: 'admin', password: 'kantin123' };
+    if (user === cred.username && pass === cred.password) {
+      sessionStorage.setItem('admin', 'true');
+      showToast('Selamat datang, Admin! 🍳', 'success');
+      setTimeout(() => location.href = 'admin.html', 800);
+    } else {
+      showToast('Username atau password salah!', 'error');
+    }
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+
+  // Enter key support
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const active = document.getElementById('tab-siswa').classList.contains('active');
+      active ? loginSiswa() : loginAdmin();
+    }
+  });
+
+  window.switchRole = switchRole;
+  window.loginSiswa = loginSiswa;
+  window.loginAdmin = loginAdmin;
+</script>
+</body>
+</html>
