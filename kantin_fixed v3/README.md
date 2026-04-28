@@ -167,8 +167,8 @@ Firebase      Status berubah ke: paid
 ---
 
 
-1. **Demo live** — deploy ke Netlify/Firebase sebelum presentasi
-2. **Persiapkan skenario** — 1 siswa order + 1 admin di HP berbeda, tunjukkan real-time sync
-3. **Ceritakan konsep** — antrian kantin = masalah nyata siswa
-4. **Eco feature** — nilai tambah sustainability / lingkungan
-5. **Statistik omzet** — tunjukkan value untuk penjual
+1. Demo live — deploy ke Netlify/Firebase sebelum presentasi
+2. Persiapkan skenario — 1 siswa order + 1 admin di HP berbeda, tunjukkan real-time sync
+3. Cerita konsep — antrian kantin = masalah nyata siswa
+4. Eco feature — nilai tambah sustainability / lingkungan
+5. Statistik omzet — tunjukkan value untuk penjual
